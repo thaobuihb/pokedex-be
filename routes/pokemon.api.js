@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const { faker } = require("@faker-js/faker");
+const path = require("path");
 var router = express.Router();
 
 // Get pokemons
@@ -19,7 +20,6 @@ router.get("/", (req, res, next) => {
         throw exception;
       }
     });
-
     let offset = limit * (page - 1);
     let db = fs.readFileSync("pokemons.json", "utf-8");
     db = JSON.parse(db);
@@ -51,16 +51,15 @@ router.get("/:id", (req, res, next) => {
     let nextPokemonId = null;
     let result = {};
     if (pokemonId === data[data.length - 1].id) {
-      nextPokemonId = 1;
+      nextPokemonId = data[0].id;
       previousPokemonId = data[data.length - 2].id;
-    } else if (pokemonId === 1) {
+    } else if (pokemonId === data[0].id) {
       previousPokemonId = data[data.length - 1].id;
       nextPokemonId = pokemonId + 1;
     } else {
       previousPokemonId = data[indexOfPokemon - 1].id;
       nextPokemonId = data[indexOfPokemon + 1].id;
     }
-
     data = data.filter((item) => {
       if (item.id === previousPokemonId) return true;
       else if (item.id === nextPokemonId) return true;
@@ -75,7 +74,6 @@ router.get("/:id", (req, res, next) => {
     next(error);
   }
 });
-
 router.post("/", (req, res, next) => {
   const pokemonTypes = [
     "bug",
@@ -105,13 +103,11 @@ router.post("/", (req, res, next) => {
       exception.statusCode = 401;
       throw exception;
     }
-
     if (types.length > 2) {
       const exception = new Error("Pokémon can only have one or two types");
       exception.statusCode = 401;
       throw exception;
     }
-
     types.forEach((type) => {
       if (!pokemonTypes.includes(type)) {
         const exception = new Error("Pokemon's types is not valid");
@@ -120,7 +116,10 @@ router.post("/", (req, res, next) => {
       }
     });
 
-    let db = fs.readFileSync("pokemons.json", "utf-8");
+    const dir = path.join(process.cwd(), "pokemons.json");
+    // console.log("-------", dir);
+
+    let db = fs.readFileSync(dir, "utf-8");
     db = JSON.parse(db);
     let { data, totalPokemons } = db;
     data.forEach((pokemon) => {
@@ -130,7 +129,6 @@ router.post("/", (req, res, next) => {
         throw exception;
       }
     });
-
     url = faker.image.url();
     weight = faker.number.int({ min: 10, max: 1000 });
     height = faker.number.int({ min: 10, max: 1000 });
@@ -149,20 +147,17 @@ router.post("/", (req, res, next) => {
       abilities,
       description,
     };
-
     data.push(result);
     totalPokemons += 1;
-
     db.data = data;
     db.totalPokemons = totalPokemons;
 
     fs.writeFileSync("pokemons.json", JSON.stringify(db));
-    res.status(200).send("Success");
+    res.status(201).send("Success");
   } catch (error) {
     next(error);
   }
 });
-
 router.put("/:id", (req, res, next) => {
   const pokemonTypes = [
     "bug",
@@ -187,14 +182,12 @@ router.put("/:id", (req, res, next) => {
   try {
     let { id } = req.params;
     id = parseInt(id);
-    let { name, url, types } = req.body;
+    let { name, imgUrl, types } = req.body;
     let db = fs.readFileSync("pokemons.json", "utf-8");
     db = JSON.parse(db);
     let { data } = db;
-
     const pokemonUpdate = data.find((item) => item.id === id);
     const pokemonUpdateIndexInArray = data.findIndex((item) => item.id === id);
-
     if (name) {
       data.forEach((item) => {
         if (name === item.name) {
@@ -205,35 +198,28 @@ router.put("/:id", (req, res, next) => {
       });
       pokemonUpdate.name = name;
     }
-
-    if (url) {
+    if (imgUrl) {
       pokemonUpdate.url = faker.image.url();
     }
-
-    if (types.length > 0) {
-      types.forEach((type) => {
+    types.forEach((type, index) => {
+      if (type !== null) {
+        console.log("hi");
         if (!pokemonTypes.includes(type)) {
           const exception = new Error("Pokemon's types is not valid");
           exception.statusCode = 401;
           throw exception;
         }
-      });
-      types.forEach((type, index) => {
         pokemonUpdate.types[index] = type;
-      });
-    }
-
+      }
+    });
     data.splice(pokemonUpdateIndexInArray, 1, pokemonUpdate);
-
     db.data = data;
-
     fs.writeFileSync("pokemons.json", JSON.stringify(db));
     res.status(200).send("Success");
   } catch (error) {
     next(error);
   }
 });
-
 router.delete("/:id", (req, res, next) => {
   try {
     let { id } = req.params;
@@ -246,9 +232,9 @@ router.delete("/:id", (req, res, next) => {
     db.totalPokemons = totalPokemons;
     db.data = data;
     fs.writeFileSync("pokemons.json", JSON.stringify(db));
+    res.status(200).send("Success");
   } catch (error) {
     next(error);
   }
 });
-
 module.exports = router;
