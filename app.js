@@ -14,12 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: "https://pokedex-fe-thao.netlify.app/",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
+app.use(cors());
 // app.options("*", cors());
 
 app.use("/", indexRouter);
